@@ -1,71 +1,121 @@
 #!/usr/bin/python3
 """Module Test Case for FileStorage"""
 import unittest
-from datetime import datetime
-import re
+import time
 import os
-import pep8
-import models
+import json
 from models.engine.file_storage import FileStorage
 from models.base_model import BaseModel
 from models.user import User
 from models.state import State
-from models.city import City
-from models.amenity import Amenity
-from models.place import Place
-from models.review import Review
-
 
 class TestFileStorage(unittest.TestCase):
     """FileStorage Test Class"""
     @classmethod
-    def setUpClass(cls):
-        cls.p1 = Place()
-        cls.p1.city_id = "Richmond"
-        cls.p1.state_id = "VA"
-        cls.p1.number_rooms = 8
-        cls.p1.description = "awesome"
-
-    @classmethod
-    def tearDownClass(cls):
-        del cls.p1
+    def setUp(self):
+        '''
+            Initializing classes
+        '''
+        self.storage = FileStorage()
+        self.my_model = BaseModel()
 
     def tearDown(self):
-        """TearDown for each method in TestFileStorage class"""
-        models.storage.delete_obj()
-        if os.path.exists('file.json'):
-            os.remove('file.json')
+        '''
+            Cleaning up.
+        '''
 
-    def test_style_check(self):
-        """
-        Tests pep8 style
-        """
-        style = pep8.StyleGuide(quiet=True)
-        p = style.check_files(['models/engine/file_storage.py'])
-        self.assertEqual(p.total_errors, 0, "fix pep8")
+        try:
+            os.remove("file.json")
+        except FileNotFoundError:
+            pass
 
-    def test_fs_instance(self):
-        """FileStorage class save checks, reload checks"""
-        b1 = BaseModel()
-        models.storage.save()
-        self.assertEqual(os.path.exists('file.json'), True)
+    def test_all_return_type(self):
+        '''
+            Tests the data type of the return value of the all method.
+        '''
+        storage_all = self.storage.all()
+        self.assertIsInstance(storage_all, dict)
 
-        models.storage.delete_obj()
-        models.storage.reload()
+    def test_delete(self):
+        new_state = State()
+        new_state.name = "California***********"
+        fs = FileStorage()
+        fs.new(new_state)
+        fs.save()
+        self.assertTrue(os.path.isfile("file.json"))
+        with open("file.json", encoding="UTF8") as fd:
+            content = fd.read()
+        flag = 1
+        if new_state.id in content:
+            flag = 0
+        self.assertTrue(flag == 0)
+        fs.delete(new_state)
+        fs.save()
+        with open("file.json", encoding="UTF8") as fd:
+            content = fd.read()
+        flag = 0
+        if new_state.id in content:
+            flag = 1
+        self.assertTrue(flag == 0)
 
-    def test_errs(self):
-        """Test most mal usage of FileStorage methods"""
-        b1 = BaseModel()
-        with self.assertRaises(AttributeError):
-            FileStorage.__objects
-            FileStorage.__File_path
+    def test_new_method(self):
+        '''
+            Tests that the new method sets the right key and value pair
+            in the FileStorage.__object attribute
+        '''
+        self.storage.new(self.my_model)
+        key = str(self.my_model.__class__.__name__ + "." + self.my_model.id)
+        self.assertTrue(key in self.storage._FileStorage__objects)
 
-        with self.assertRaises(TypeError):
-            models.storage.new()
-            models.storage.new(self, b1)
-            models.save(b1)
-            models.reload(b1)
-            models.all(b1)
+    def test_objects_value_type(self):
+        '''
+            Tests that the type of value contained in the FileStorage.__object
+            is of type obj.__class__.__name__
+        '''
+        self.storage.new(self.my_model)
+        key = str(self.my_model.__class__.__name__ + "." + self.my_model.id)
+        val = self.storage._FileStorage__objects[key]
+        self.assertIsInstance(self.my_model, type(val))
 
-if __name__ == '__main__':
-    unittest.main()
+    def test_save_file_exists(self):
+        '''
+            Tests that a file gets created with the name file.json
+        '''
+        self.storage.save()
+        self.assertTrue(os.path.isfile("file.json"))
+
+    def test_save_file_read(self):
+        '''
+            Testing the contents of the files inside the file.json
+        '''
+        self.storage.save()
+        self.storage.new(self.my_model)
+
+        with open("file.json", encoding="UTF8") as fd:
+            content = json.load(fd)
+
+        self.assertTrue(isinstance(content, dict))
+
+    def test_the_type_file_content(self):
+        '''
+            testing the type of the contents inside the file.
+        '''
+        self.storage.save()
+        self.storage.new(self.my_model)
+
+        with open("file.json", encoding="UTF8") as fd:
+            content = fd.read()
+
+        self.assertIsInstance(content, str)
+
+    def test_reaload_without_file(self):
+        '''
+            Tests that nothing happens when file.json does not exists
+            and reload is called
+        '''
+
+        try:
+            self.storage.reload()
+            self.assertTrue(True)
+        except BaseException:
+            self.assertTrue(False)
