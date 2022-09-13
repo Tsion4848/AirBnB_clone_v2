@@ -1,1 +1,1 @@
-this is readme for command interpreter, how to start it, how to use it and examples
+this is part 2 of the airBnB_clone project. it modifies the previous project and adds new features
