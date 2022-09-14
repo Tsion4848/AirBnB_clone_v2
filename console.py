@@ -1,5 +1,7 @@
 #!/usr/bin/python3
-"""This is a class HBNBCommand"""
+'''
+Implementing the console for the HBnB project.
+'''
 import cmd
 import json
 import shlex
