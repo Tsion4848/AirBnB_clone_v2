@@ -7,23 +7,16 @@ from models.city import City
 from os import getenv
 import models
 
-
-storage_type = getenv("HBNB_TYPE_STORAGE")
-
-
 class State(BaseModel, Base):
     '''
         Implementation for the State.
     '''
     __tablename__ = 'states'
-    if storage_type == 'db':
-        name = Column(String(128), nullable=False)
-        cities = relationship("City", backref="state",
-                              cascade="all, delete-orphan")
-    else:
-        name = ""
+    name = Column(String(128), nullable=False)
+    cities = relationship("City", backref="state",
+                              cascade="delete")
 
-    if storage_type != 'db':
+    if getenv("HBNB_TYPE_STORAGE") != 'db':
         @property
         def cities(self):
             """
@@ -31,8 +24,7 @@ class State(BaseModel, Base):
             equals to the current State.id
             """
             list_cities = []
-            all_cities = models.storage.all(City)
-            for key, city_obj in all_cities.items():
+            for city_obj in list(models.storage.all(City).values()):
                 if city_obj.state_id == self.id:
                     list_cities.append(city_obj)
-            return 
+            return city_list
