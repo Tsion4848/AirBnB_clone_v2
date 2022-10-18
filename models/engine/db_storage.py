@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""create class DBStorage"""
+"""defines the DBStorage engine"""
 from os import getenv
 from sqlalchemy import (create_engine)
 from sqlalchemy.orm import sessionmaker, scoped_session
@@ -23,17 +23,25 @@ classes = {"State": State, "City": City, "User": User,
 
 
 class DBStorage:
-    """class DBStorage"""
+    """Represents a database storage engine.
+    Attributes:
+        __engine (sqlalchemy.Engine): The working SQLAlchemy engine.
+        __session (sqlalchemy.Session): The working SQLAlchemy session.
+    """
+    
     __engine = None
     __session = None
 
     def __init__(self):
         """initialize instances"""
-        self.__engine = create_engine('mysql+mysqldb://{}:{}@{}/{}'.format
-                                      (user, password, host, database),
+        self.__engine = create_engine('mysql+mysqldb://{}:{}@{}/{}'.
+                                      format(getenv("HBNB_MYSQL_USER"),
+                                             getenv("HBNB_MYSQL_PWD"),
+                                             getenv("HBNB_MYSQL_HOST"),
+                                             getenv("HBNB_MYSQL_DB")),
                                       pool_pre_ping=True)
 
-        if hbnb_env == 'test':
+        if getenv("HBNB_ENV") == "test":
             Base.metadata.drop_all(self.__engine)
 
     def all(self, cls=None):
@@ -43,25 +51,18 @@ class DBStorage:
         Returns:
             dictionary of objects
         """
-        dbobjects = {}
-        if cls:
-            if type(cls) is str and cls in classes:
-                for obj in self.__session.query(classes[cls]).all():
-                    key = str(obj.__class__.__name__) + "." + str(obj.id)
-                    val = obj
-                    dbobjects[key] = val
-            elif cls.__name__ in classes:
-                for obj in self.__session.query(cls).all():
-                    key = str(obj.__class__.__name__) + "." + str(obj.id)
-                    val = obj
-                    dbobjects[key] = val
+        if cls is None:
+            objs = self.__session.query(State).all()
+            objs.extend(self.__session.query(City).all())
+            objs.extend(self.__session.query(User).all())
+            objs.extend(self.__session.query(Place).all())
+            objs.extend(self.__session.query(Review).all())
+            objs.extend(self.__session.query(Amenity).all())
         else:
-            for k, v in classes.items():
-                for obj in self.__session.query(v).all():
-                    key = str(v.__name__) + "." + str(obj.id)
-                    val = obj
-                    dbobjects[key] = val
-        return dbobjects
+            if type(cls) == str:
+                cls = eval(cls)
+            objs = self.__session.query(cls)
+        return {"{}.{}".format(type(o).__name__, o.id): o for o in objs}
 
     def new(self, obj):
         """
